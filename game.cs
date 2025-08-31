@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Lineup
 {
@@ -52,7 +53,7 @@ namespace Lineup
                     }
                     else
                     {
-                        Console.Write(grid[i, j].Symbol);
+                        Console.Write(grid[i, j]?.Symbol);
                     }
                     Console.Write("|");
                 }
@@ -70,6 +71,10 @@ namespace Lineup
             if (disc.Type == DiscType.Boring)
             {
                 return PlaceBoringDisc(disc, col);
+            }
+
+            if (disc.Type == DiscType.Magnetic) {
+                return PlaceMagDisc(disc, col);
             }
 
             // find the place at the given column from bottom row to top
@@ -107,6 +112,48 @@ namespace Lineup
 
         private bool PlaceMagDisc(Disc disc, int col)
         {
+            int currDisc = -1;
+            for (int row = rows - 1; row >= 0; row--)
+            {
+                if (grid[row, col] == null)
+                {
+                    grid[row, col] = disc;
+                    currDisc = row;
+                    break;
+                }
+            }
+            int nearestPlayerDisc = -1;
+            int LastOpponentDisc = -1;
+            // find the nearest player and opponent's disc
+            for (int row = currDisc+1; row < rows; row++)
+            {
+                // find the nearest disc and break
+                if (grid[row, col] != null)
+                {
+                    // record the position of disc of currentplayer and opponentplayer
+                    if (grid[row, col]?.Type == DiscType.Ordinary)
+                    {
+                        if (grid[row, col]?.PlayerId == currentPlayer.PlayerId)
+                        {
+                            nearestPlayerDisc = nearestPlayerDisc == -1 ? row : nearestPlayerDisc;
+                        }
+                        else {
+                            // cannot find the position that below the player disc
+                            if (nearestPlayerDisc == -1)
+                            {
+                                LastOpponentDisc = row;
+                            }
+                        }
+                    }
+                }
+            }
+            Console.WriteLine($"first player pos: {nearestPlayerDisc}, last opponenet disc: {LastOpponentDisc}");
+            // swap the position
+            if (nearestPlayerDisc != -1 && LastOpponentDisc != -1 && nearestPlayerDisc > LastOpponentDisc)
+            {
+                (grid[nearestPlayerDisc, col], grid[LastOpponentDisc, col]) = (grid[LastOpponentDisc, col], grid[nearestPlayerDisc, col]);
+            }
+
             return true;
         }
 
@@ -218,14 +265,6 @@ namespace Lineup
                 }
                 else if (action >= 1 && action <= 3)
                 {
-                    DiscType discType = action switch
-                    {
-                        1 => DiscType.Ordinary,
-                        2 => DiscType.Boring,
-                        3 => DiscType.Magnetic,
-                        _ => DiscType.Ordinary
-                    };
-
                     if (currentPlayer.IsComputer)
                     {
                         col = random.Next(0, 7);
@@ -236,7 +275,7 @@ namespace Lineup
                         col = Convert.ToInt32(Console.ReadLine());
                     }
 
-                    disc = currentPlayer.MakeMove(col, discType);
+                    disc = currentPlayer.MakeMove(col, (DiscType)(action-1));
                     if (disc != null && PlaceDisc(disc, col))
                     {
                         if (EndGame())
@@ -253,7 +292,7 @@ namespace Lineup
                 }
                 else
                 {
-                    Console.WriteLine("Invalid input! Use format: column action (e.g., '3 1')");
+                    Console.WriteLine("Invalid input!");
                 }
             }
 
