@@ -2,13 +2,13 @@ namespace Lineup
 {
     class Player
     {
-        int ordinaryDiscs = 0;
-        int boringDiscs = 2;
-        int magneticDiscs = 2;
+        private int ordinaryDiscs = 0;
+        private int boringDiscs = 2;
+        private int magneticDiscs = 2;
 
-        public bool placeDisc(int type, int col)
+        public Player(int numOfOrdDiscs)
         {
-            return false 
+            ordinaryDiscs = numOfOrdDiscs;
         }
     }
 

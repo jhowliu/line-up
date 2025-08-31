@@ -1,6 +1,3 @@
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
-
 namespace Lineup
 {
     class Game
@@ -9,7 +6,7 @@ namespace Lineup
         private int rows;
         private int cols;
 
-        public Game(int rows, int cols)
+        public Game(int rows = 6, int cols = 7)
         {
             this.rows = rows;
             this.cols = cols;
@@ -18,17 +15,24 @@ namespace Lineup
 
         public void drawGrid()
         {
+            Console.WriteLine();
             for (int i = 0; i < rows; i++)
             {
                 Console.Write("|");
                 for (int j = 0; j < cols; j++)
                 {
-                    Console.Write("   ");
+                    if (grid[i,j] == "") {
+                        Console.Write("   ");
+                    }
+                    else {
+                        Console.Write(grid[i, j]);
+                    }
                     Console.Write("|");
                     // draw discs if exist
                 }
                 Console.WriteLine();
             }
+            Console.WriteLine();
         }
 
         public bool placeDisc(Disc disc, int col)
@@ -42,11 +46,13 @@ namespace Lineup
             return false;
         }
 
-        public bool save() {
+        public bool save()
+        {
             return false;
         }
 
-        public bool load(string storagePath) {
+        public bool load(string storagePath)
+        {
             return false;
         }
     }
