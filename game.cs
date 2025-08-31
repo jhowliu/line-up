@@ -1,12 +1,10 @@
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 
 namespace Lineup
 {
     public class Game
     {
-        private Disc?[,] grid;
+        private Disc?[][] grid;
         private int rows;
         private int cols;
         private Player player1;
@@ -21,7 +19,13 @@ namespace Lineup
             this.isPlayerVsComputer = isPlayerVsComputer;
             int totalOrdinaryDiscs = rows * cols / 2;
 
-            grid = new Disc[rows, cols];
+            // initiate 2d array
+            grid = new Disc?[rows][];
+            for (int r = 0; r < rows; r++)
+            {
+                grid[r] = new Disc?[cols];
+            }
+
             player1 = new Player(totalOrdinaryDiscs, 1);
             player2 = new Player(totalOrdinaryDiscs, 2);
             if (isPlayerVsComputer)
@@ -47,13 +51,13 @@ namespace Lineup
                 Console.Write("|");
                 for (int j = 0; j < cols; j++)
                 {
-                    if (grid[i, j] == null)
+                    if (grid[i][j] == null)
                     {
                         Console.Write("   ");
                     }
                     else
                     {
-                        Console.Write(grid[i, j]?.Symbol);
+                        Console.Write(grid[i][j]?.Symbol);
                     }
                     Console.Write("|");
                 }
@@ -80,9 +84,9 @@ namespace Lineup
             // find the place at the given column from bottom row to top
             for (int row = rows - 1; row >= 0; row--)
             {
-                if (grid[row, col] == null)
+                if (grid[row][col] == null)
                 {
-                    grid[row, col] = disc;
+                    grid[row][col] = disc;
                     return true;
                 }
             }
@@ -94,10 +98,10 @@ namespace Lineup
             // remove all discs in the given column
             for (int row = 0; row < rows; row++)
             {
-                if (grid[row, col] != null)
+                if (grid[row][col] != null)
                 {
-                    Disc? removedDisc = grid[row, col];
-                    grid[row, col] = null;
+                    Disc? removedDisc = grid[row][col];
+                    grid[row][col] = null;
 
                     if (removedDisc?.PlayerId == 1)
                         player1.ReturnDisc(removedDisc.Type);
@@ -106,7 +110,7 @@ namespace Lineup
                 }
             }
 
-            grid[rows - 1, col] = disc;
+            grid[rows - 1][col] = disc;
             return true;
         }
 
@@ -115,9 +119,9 @@ namespace Lineup
             int currDisc = -1;
             for (int row = rows - 1; row >= 0; row--)
             {
-                if (grid[row, col] == null)
+                if (grid[row][col] == null)
                 {
-                    grid[row, col] = disc;
+                    grid[row][col] = disc;
                     currDisc = row;
                     break;
                 }
@@ -128,12 +132,12 @@ namespace Lineup
             for (int row = currDisc+1; row < rows; row++)
             {
                 // find the nearest disc and break
-                if (grid[row, col] != null)
+                if (grid[row][col] != null)
                 {
                     // record the position of disc of currentplayer and opponentplayer
-                    if (grid[row, col]?.Type == DiscType.Ordinary)
+                    if (grid[row][col]?.Type == DiscType.Ordinary)
                     {
-                        if (grid[row, col]?.PlayerId == currentPlayer.PlayerId)
+                        if (grid[row][col]?.PlayerId == currentPlayer.PlayerId)
                         {
                             nearestPlayerDisc = nearestPlayerDisc == -1 ? row : nearestPlayerDisc;
                         }
@@ -151,7 +155,7 @@ namespace Lineup
             // swap the position
             if (nearestPlayerDisc != -1 && LastOpponentDisc != -1 && nearestPlayerDisc > LastOpponentDisc)
             {
-                (grid[nearestPlayerDisc, col], grid[LastOpponentDisc, col]) = (grid[LastOpponentDisc, col], grid[nearestPlayerDisc, col]);
+                (grid[nearestPlayerDisc][col], grid[LastOpponentDisc][col]) = (grid[LastOpponentDisc][col], grid[nearestPlayerDisc][col]);
             }
 
             return true;
@@ -159,24 +163,25 @@ namespace Lineup
 
         public bool EndGame()
         {
-            return CheckWinCondition() || IsGridFull();
+            return CheckWinCondition() != null || IsGridFull();
         }
 
-        private bool CheckWinCondition()
+        private int? CheckWinCondition()
         {
             for (int row = 0; row < rows; row++)
             {
                 for (int col = 0; col < cols; col++)
                 {
-                    Disc? disc = grid[row, col];
+                    Disc? disc = grid[row][col];
                     if (disc != null)
                     {
                         if (CheckFourInRow(row, col, disc.PlayerId))
-                            return true;
+                            return disc.PlayerId;
                     }
                 }
             }
-            return false;
+
+            return null;
         }
 
         private bool CheckFourInRow(int startRow, int startCol, int playerId)
@@ -201,7 +206,7 @@ namespace Lineup
                     int newCol = startCol + i * dCol;
                     // boundary check
                     if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols &&
-                        grid[newRow, newCol] != null && grid[newRow, newCol]?.PlayerId == playerId)
+                        grid[newRow][newCol] != null && grid[newRow][newCol]?.PlayerId == playerId)
                     {
                         count++;
                     }
@@ -219,7 +224,7 @@ namespace Lineup
             {
                 for (int col = 0; col < cols; col++)
                 {
-                    if (grid[row, col] == null) return false;
+                    if (grid[row][col] == null) return false;
                 }
             }
             return true;
@@ -255,7 +260,10 @@ namespace Lineup
 
                 if (action == 4)
                 {
-                    Save();
+                    if (FileManager.SaveGame(this, "record.json"))
+                    {
+                        Console.WriteLine("Save successfully.");
+                    }
                     continue;
                 }
                 else if (action == 5)
@@ -297,14 +305,11 @@ namespace Lineup
             }
 
             DrawGrid();
-            if (CheckWinCondition())
-            {
-                Console.WriteLine($"Game Over! Player {currentPlayer.PlayerId} wins!");
-            }
+            int? winnerId = CheckWinCondition();
+            if (winnerId != null) 
+                Console.WriteLine($"Game Over! Player {winnerId} wins!");
             else
-            {
                 Console.WriteLine("Game Over! It's a draw!");
-            }
         }
 
         private void ShowHelp()
@@ -321,16 +326,63 @@ namespace Lineup
             Console.ReadKey();
         }
 
-        public bool Save()
+        public string toJSON()
         {
-            return false;
+            return JsonSerializer.Serialize(new
+            {
+                rows,
+                cols,
+                grid,
+                player1,
+                player2,
+                currentPlayer,
+            });
         }
 
-        public bool Load(string filePath)
+        public static Game? LoadFromJSON(object data)
         {
-            return false;
+            try
+            {
+                JsonElement jsonData = (JsonElement)data;
+                
+                int rows = jsonData.GetProperty("rows").GetInt32();
+                int cols = jsonData.GetProperty("cols").GetInt32();
+                
+                Game game = new Game(rows, cols);
+                
+                // Deserialize grid
+                var grid = jsonData.GetProperty("grid");
+                for (int i = 0; i < rows; i++)
+                {
+                    for (int j = 0; j < cols; j++)
+                    {
+                        if (grid[i][j].ValueKind != JsonValueKind.Null)
+                        {
+                            game.grid[i][j] = Disc.LoadFromJSON(grid[i][j]);
+                        }
+                    }
+                }
+                
+                // Deserialize players
+                var player1Element = jsonData.GetProperty("player1");
+                game.player1 = Player.DeserializePlayer(player1Element);
+                
+                var player2Element = jsonData.GetProperty("player2");
+                game.player2 = Player.DeserializePlayer(player2Element);
+                
+                // Set current player
+                var currentPlayer = jsonData.GetProperty("currentPlayer");
+                int currentPlayerId = currentPlayer.GetProperty("PlayerId").GetInt32();
+                game.currentPlayer = currentPlayerId == 1 ? game.player1 : game.player2;
+                
+                return game;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading game from JSON: {ex.Message}");
+                return null;
+            }
         }
-
-        public void RunTestMode(string input) {}
+        public void RunTestMode(string input) { }
     }
 }

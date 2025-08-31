@@ -48,7 +48,15 @@ namespace Lineup
             }
             else if (option == 0)
             {
-                Console.WriteLine("Load game functionality not yet implemented.");
+                Game? game = FileManager.LoadGame("record.json");
+                if (game != null)
+                {
+                    game.StartGameLoop();
+                }
+                else
+                {
+                    Console.WriteLine("Cannot load the game record. please create a new game.");
+                }
             }
             else if (option == 2)
             {

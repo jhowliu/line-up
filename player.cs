@@ -1,3 +1,4 @@
+using System.Text.Json;
 namespace Lineup
 {
     public class Player
@@ -47,6 +48,26 @@ namespace Lineup
             return null;
         }
 
+        public static Player DeserializePlayer(JsonElement playerElement)
+        {
+            int playerId = playerElement.GetProperty("PlayerId").GetInt32();
+            bool isComputer = playerElement.GetProperty("IsComputer").GetBoolean();
+
+            var ordinaryElement = playerElement.GetProperty("OrdinaryDisc");
+            int ordinaryNumber = ordinaryElement.GetProperty("Number").GetInt32();
+
+            Player player = isComputer ? new ComputerPlayer(ordinaryNumber) : new Player(ordinaryNumber, playerId);
+
+            // Update disc numbers from saved state
+            var boringElement = playerElement.GetProperty("BoringDisc");
+            player.BoringDisc.Number = boringElement.GetProperty("Number").GetInt32();
+
+            var magneticElement = playerElement.GetProperty("MagneticDisc");
+            player.MagneticDisc.Number = magneticElement.GetProperty("Number").GetInt32();
+
+            return player;
+        }
+
         public void ReturnDisc(DiscType discType)
 
         {
@@ -72,7 +93,7 @@ namespace Lineup
             IsComputer = true;
         }
 
-        public override Disc? MakeMove(int column, DiscType discType) 
+        public override Disc? MakeMove(int column, DiscType discType)
         {
             return base.MakeMove(column, discType);
         }

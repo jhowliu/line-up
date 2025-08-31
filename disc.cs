@@ -1,5 +1,6 @@
 using System.Diagnostics.SymbolStore;
 using System.Linq.Expressions;
+using System.Text.Json;
 
 namespace Lineup
 {
@@ -23,6 +24,33 @@ namespace Lineup
             Symbol = symbol;
             PlayerId = playerId;
             Number = number;
+        }
+
+        public static Disc? LoadFromJSON(object data)
+        {
+            JsonElement jsonData = (JsonElement)data;
+
+            int playerId = jsonData.GetProperty("PlayerId").GetInt32();
+            int number = jsonData.GetProperty("Number").GetInt32();
+
+            Disc? disc = null;
+            DiscType discType = (DiscType)jsonData.GetProperty("Type").GetInt32();
+            switch (discType)
+            {
+                case DiscType.Ordinary:
+                    disc = new OrdinaryDisc(playerId, number);
+                    break;
+                case DiscType.Boring:
+                    disc = new BoringDisc(playerId, number);
+                    break;
+                case DiscType.Magnetic:
+                    disc = new MagneticDisc(playerId, number);
+                    break;
+                default:
+                    break;
+            }
+
+            return disc;
         }
     }
 
