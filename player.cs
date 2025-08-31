@@ -2,17 +2,19 @@ namespace Lineup
 {
     public class Player
     {
-        protected int ordinaryDiscs = 0;
-        protected int boringDiscs = 2;
-        protected int magneticDiscs = 2;
-        public string Symbol { get; protected set; }
+        public Disc OrdinaryDisc { get; protected set; }
+        public Disc BoringDisc { get; protected set; }
+        public Disc MagneticDisc { get; protected set; }
         public int PlayerId { get; protected set; }
+        public bool IsComputer { get; protected set; }
 
-        public Player(int numOfOrdDiscs, string symbol, int playerId = 0)
+        public Player(int numOfOrdDiscs, int playerId = 1)
         {
-            ordinaryDiscs = numOfOrdDiscs;
-            Symbol = symbol;
+            OrdinaryDisc = new OrdinaryDisc(playerId, numOfOrdDiscs); ;
+            BoringDisc = new BoringDisc(playerId, 2);
+            MagneticDisc = new MagneticDisc(playerId, 2);
             PlayerId = playerId;
+            IsComputer = false;
         }
 
         public virtual Disc? MakeMove(int column, DiscType discType = DiscType.Ordinary)
@@ -20,24 +22,24 @@ namespace Lineup
             switch (discType)
             {
                 case DiscType.Ordinary:
-                    if (ordinaryDiscs > 0)
+                    if (OrdinaryDisc.Number > 0)
                     {
-                        ordinaryDiscs--;
-                        return new OrdinaryDisc(PlayerId, Symbol);
+                        OrdinaryDisc.Number--;
+                        return OrdinaryDisc;
                     }
                     break;
                 case DiscType.Boring:
-                    if (boringDiscs > 0)
+                    if (BoringDisc.Number > 0)
                     {
-                        boringDiscs--;
-                        return new BoringDisc(PlayerId, Symbol);
+                        BoringDisc.Number--;
+                        return BoringDisc;
                     }
                     break;
                 case DiscType.Magnetic:
-                    if (magneticDiscs > 0)
+                    if (MagneticDisc.Number > 0)
                     {
-                        magneticDiscs--;
-                        return new MagneticDisc(PlayerId, Symbol);
+                        MagneticDisc.Number--;
+                        return MagneticDisc;
                     }
                     break;
             }
@@ -51,13 +53,13 @@ namespace Lineup
             switch (discType)
             {
                 case DiscType.Ordinary:
-                    ordinaryDiscs++;
+                    OrdinaryDisc.Number++;
                     break;
                 case DiscType.Boring:
-                    boringDiscs++;
+                    BoringDisc.Number++;
                     break;
                 case DiscType.Magnetic:
-                    magneticDiscs++;
+                    MagneticDisc.Number++;
                     break;
             }
         }
@@ -65,15 +67,14 @@ namespace Lineup
 
     public class ComputerPlayer : Player
     {
-        public ComputerPlayer(int numOfOrdDiscs, string symbol) : base(numOfOrdDiscs, symbol, 2) { }
-
-        public override Disc MakeMove(int column, DiscType discType = DiscType.Ordinary)
+        public ComputerPlayer(int numOfOrdDiscs) : base(numOfOrdDiscs, 2)
         {
-            Random random = new Random();
-            int discChoice = random.Next(0, 3);
-            
-            DiscType chosenType = (DiscType)discChoice;
-            return base.MakeMove(column, chosenType);
+            IsComputer = true;
+        }
+
+        public override Disc? MakeMove(int column, DiscType discType) 
+        {
+            return base.MakeMove(column, discType);
         }
     }
 }
