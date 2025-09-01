@@ -11,6 +11,8 @@ namespace Lineup
         private Player player2;
         private Player currentPlayer;
         private bool isPlayerVsComputer;
+        private IDiscFactory discFactory;
+        private CommandInvoker commandInvoker;
 
         private IPlaceDiscStrategy strategy = new OrdinaryDiscStrategy();
 
@@ -19,6 +21,8 @@ namespace Lineup
             this.rows = rows;
             this.cols = cols;
             this.isPlayerVsComputer = isPlayerVsComputer;
+            this.discFactory = new StandardLineUpDiscFactory();
+            this.commandInvoker = new CommandInvoker();
             int totalOrdinaryDiscs = rows * cols / 2;
 
             // initiate 2d array
@@ -28,11 +32,11 @@ namespace Lineup
                 grid[r] = new Disc?[cols];
             }
 
-            player1 = new Player(totalOrdinaryDiscs, 1);
-            player2 = new Player(totalOrdinaryDiscs, 2);
+            player1 = new Player(totalOrdinaryDiscs, 1, discFactory);
+            player2 = new Player(totalOrdinaryDiscs, 2, discFactory);
             if (isPlayerVsComputer)
             {
-                player2 = new ComputerPlayer(totalOrdinaryDiscs);
+                player2 = new ComputerPlayer(totalOrdinaryDiscs, discFactory);
             }
             currentPlayer = player1;
         }
@@ -177,15 +181,14 @@ namespace Lineup
 
                 if (action == 4)
                 {
-                    if (FileManager.SaveGame(this, "record.json"))
-                    {
-                        Console.WriteLine("Save successfully.");
-                    }
+                    var saveCommand = new SaveGameCommand(this);
+                    commandInvoker.ExecuteCommand(saveCommand);
                     continue;
                 }
                 else if (action == 5)
                 {
-                    ShowHelp();
+                    var helpCommand = new ShowHelpCommand();
+                    commandInvoker.ExecuteCommand(helpCommand);
                     continue;
                 }
                 else if (action >= 1 && action <= 3)
@@ -203,23 +206,15 @@ namespace Lineup
                     disc = currentPlayer.MakeMove(col, (DiscType)(action - 1));
                     if (disc != null)
                     {
-                        // Set strategy based on disc type
-                        IPlaceDiscStrategy discStrategy = disc.Type switch
-                        {
-                            DiscType.Ordinary => new OrdinaryDiscStrategy(),
-                            DiscType.Boring => new BoringDiscStrategy(),
-                            DiscType.Magnetic => new MagneticDiscStrategy(),
-                            _ => new OrdinaryDiscStrategy()
-                        };
-                        setPlaceDiscStrategy(discStrategy);
-
-                        if (strategy.PlaceDisc(this, disc, col))
+                        var placeDiscCommand = new PlaceDiscCommand(this, disc, col, currentPlayer);
+                        
+                        if (commandInvoker.ExecuteCommand(placeDiscCommand))
                         {
                             if (EndGame())
                             {
                                 break;
                             }
-                            // swtich player
+                            // switch player
                             currentPlayer = currentPlayer == player1 ? player2 : player1;
                         }
                         else
@@ -242,19 +237,6 @@ namespace Lineup
                 Console.WriteLine("Game Over! It's a draw!");
         }
 
-        private void ShowHelp()
-        {
-            Console.WriteLine("=== HELP ===");
-            Console.WriteLine("Goal: Get consecutive 4 discs in a row (horizontal, vertical, or diagonal)");
-            Console.WriteLine("Disc Types:");
-            Console.WriteLine("1. Ordinary(O): Falls to lowest available space.");
-            Console.WriteLine("2. Boring(B): Removes all discs in column, then places itself.");
-            Console.WriteLine("3. Magnetic(M): Special disc and pull up the nearest below disc.");
-            Console.WriteLine("Input format: [symbol+column]");
-            Console.WriteLine("Example: 'O1' places ordinary disc in column 1");
-            Console.WriteLine("Press any key to continue...");
-            Console.ReadKey();
-        }
 
         public string toJSON()
         {
@@ -295,10 +277,10 @@ namespace Lineup
 
                 // Deserialize players
                 var player1Element = jsonData.GetProperty("player1");
-                game.player1 = Player.DeserializePlayer(player1Element);
+                game.player1 = Player.DeserializePlayer(player1Element, game.discFactory);
 
                 var player2Element = jsonData.GetProperty("player2");
-                game.player2 = Player.DeserializePlayer(player2Element);
+                game.player2 = Player.DeserializePlayer(player2Element, game.discFactory);
 
                 // Set current player
                 var currentPlayer = jsonData.GetProperty("currentPlayer");
@@ -315,15 +297,14 @@ namespace Lineup
         }
         public void RunTestMode(string input) { }
 
-        private void setPlaceDiscStrategy(IPlaceDiscStrategy strategy)
+        public void SetPlaceDiscStrategy(IPlaceDiscStrategy strategy)
         {
             this.strategy = strategy;
         }
 
-        private void placeDisc(Disc disc, int col)
+        public bool ExecutePlaceDisc(Disc disc, int col)
         {
-            this.strategy.PlaceDisc(this, disc, col);
+            return this.strategy.PlaceDisc(this, disc, col);
         }
-
     }
 }
