@@ -12,6 +12,8 @@ namespace Lineup
         private Player currentPlayer;
         private bool isPlayerVsComputer;
 
+        private IPlaceDiscStrategy strategy = new OrdinaryDiscStrategy();
+
         public Game(int rows = 6, int cols = 7, bool isPlayerVsComputer = false)
         {
             this.rows = rows;
@@ -34,6 +36,15 @@ namespace Lineup
             }
             currentPlayer = player1;
         }
+
+        // Getter methods for strategy pattern access
+        public Disc?[][] GetGrid() => grid;
+        public int GetRows() => rows;
+        public int GetCols() => cols;
+        public Player GetCurrentPlayer() => currentPlayer;
+        public Player GetPlayer1() => player1;
+        public Player GetPlayer2() => player2;
+
         public void DrawGrid()
         {
             Console.WriteLine();
@@ -64,101 +75,6 @@ namespace Lineup
                 Console.WriteLine();
             }
             Console.WriteLine();
-        }
-
-        public bool PlaceDisc(Disc disc, int col)
-        {
-            // boundary check
-            if (col < 0 || col >= cols) return false;
-
-            // special disc
-            if (disc.Type == DiscType.Boring)
-            {
-                return PlaceBoringDisc(disc, col);
-            }
-
-            if (disc.Type == DiscType.Magnetic) {
-                return PlaceMagDisc(disc, col);
-            }
-
-            // find the place at the given column from bottom row to top
-            for (int row = rows - 1; row >= 0; row--)
-            {
-                if (grid[row][col] == null)
-                {
-                    grid[row][col] = disc;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool PlaceBoringDisc(Disc disc, int col)
-        {
-            // remove all discs in the given column
-            for (int row = 0; row < rows; row++)
-            {
-                if (grid[row][col] != null)
-                {
-                    Disc? removedDisc = grid[row][col];
-                    grid[row][col] = null;
-
-                    if (removedDisc?.PlayerId == 1)
-                        player1.ReturnDisc(removedDisc.Type);
-                    else if (removedDisc?.PlayerId == 2)
-                        player2.ReturnDisc(removedDisc.Type);
-                }
-            }
-
-            grid[rows - 1][col] = disc;
-            return true;
-        }
-
-        private bool PlaceMagDisc(Disc disc, int col)
-        {
-            int currDisc = -1;
-            for (int row = rows - 1; row >= 0; row--)
-            {
-                if (grid[row][col] == null)
-                {
-                    grid[row][col] = disc;
-                    currDisc = row;
-                    break;
-                }
-            }
-            int nearestPlayerDisc = -1;
-            int LastOpponentDisc = -1;
-            // find the nearest player and opponent's disc
-            for (int row = currDisc+1; row < rows; row++)
-            {
-                // find the nearest disc and break
-                if (grid[row][col] != null)
-                {
-                    // record the position of disc of currentplayer and opponentplayer
-                    if (grid[row][col]?.Type == DiscType.Ordinary)
-                    {
-                        if (grid[row][col]?.PlayerId == currentPlayer.PlayerId)
-                        {
-                            nearestPlayerDisc = nearestPlayerDisc == -1 ? row : nearestPlayerDisc;
-                        }
-                        else {
-                            // cannot find the position that below the player disc
-                            if (nearestPlayerDisc == -1)
-                            {
-                                LastOpponentDisc = row;
-                            }
-                        }
-                    }
-                }
-            }
-            Console.WriteLine($"first player pos: {nearestPlayerDisc}, last opponenet disc: {LastOpponentDisc}");
-            // swap the position
-            if (nearestPlayerDisc != -1 && LastOpponentDisc != -1 && nearestPlayerDisc > LastOpponentDisc)
-            {
-                (grid[nearestPlayerDisc][col], grid[LastOpponentDisc][col]) = (grid[LastOpponentDisc][col], grid[nearestPlayerDisc][col]);
-            }
-
-            return true;
         }
 
         public bool EndGame()
@@ -237,6 +153,7 @@ namespace Lineup
             int col;
             Disc? disc;
 
+
             while (!EndGame())
             {
                 DrawGrid();
@@ -283,19 +200,32 @@ namespace Lineup
                         col = Convert.ToInt32(Console.ReadLine());
                     }
 
-                    disc = currentPlayer.MakeMove(col, (DiscType)(action-1));
-                    if (disc != null && PlaceDisc(disc, col))
+                    disc = currentPlayer.MakeMove(col, (DiscType)(action - 1));
+                    if (disc != null)
                     {
-                        if (EndGame())
+                        // Set strategy based on disc type
+                        IPlaceDiscStrategy discStrategy = disc.Type switch
                         {
-                            break;
+                            DiscType.Ordinary => new OrdinaryDiscStrategy(),
+                            DiscType.Boring => new BoringDiscStrategy(),
+                            DiscType.Magnetic => new MagneticDiscStrategy(),
+                            _ => new OrdinaryDiscStrategy()
+                        };
+                        setPlaceDiscStrategy(discStrategy);
+
+                        if (strategy.PlaceDisc(this, disc, col))
+                        {
+                            if (EndGame())
+                            {
+                                break;
+                            }
+                            // swtich player
+                            currentPlayer = currentPlayer == player1 ? player2 : player1;
                         }
-                        // swtich player
-                        currentPlayer = currentPlayer == player1 ? player2 : player1;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid move! Try again.");
+                        else
+                        {
+                            Console.WriteLine("Invalid move! Try again.");
+                        }
                     }
                 }
                 else
@@ -306,7 +236,7 @@ namespace Lineup
 
             DrawGrid();
             int? winnerId = CheckWinCondition();
-            if (winnerId != null) 
+            if (winnerId != null)
                 Console.WriteLine($"Game Over! Player {winnerId} wins!");
             else
                 Console.WriteLine("Game Over! It's a draw!");
@@ -344,12 +274,12 @@ namespace Lineup
             try
             {
                 JsonElement jsonData = (JsonElement)data;
-                
+
                 int rows = jsonData.GetProperty("rows").GetInt32();
                 int cols = jsonData.GetProperty("cols").GetInt32();
-                
+
                 Game game = new Game(rows, cols);
-                
+
                 // Deserialize grid
                 var grid = jsonData.GetProperty("grid");
                 for (int i = 0; i < rows; i++)
@@ -362,19 +292,19 @@ namespace Lineup
                         }
                     }
                 }
-                
+
                 // Deserialize players
                 var player1Element = jsonData.GetProperty("player1");
                 game.player1 = Player.DeserializePlayer(player1Element);
-                
+
                 var player2Element = jsonData.GetProperty("player2");
                 game.player2 = Player.DeserializePlayer(player2Element);
-                
+
                 // Set current player
                 var currentPlayer = jsonData.GetProperty("currentPlayer");
                 int currentPlayerId = currentPlayer.GetProperty("PlayerId").GetInt32();
                 game.currentPlayer = currentPlayerId == 1 ? game.player1 : game.player2;
-                
+
                 return game;
             }
             catch (Exception ex)
@@ -384,5 +314,16 @@ namespace Lineup
             }
         }
         public void RunTestMode(string input) { }
+
+        private void setPlaceDiscStrategy(IPlaceDiscStrategy strategy)
+        {
+            this.strategy = strategy;
+        }
+
+        private void placeDisc(Disc disc, int col)
+        {
+            this.strategy.PlaceDisc(this, disc, col);
+        }
+
     }
 }
