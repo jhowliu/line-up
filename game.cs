@@ -2,7 +2,15 @@ using System.Text.Json;
 
 namespace Lineup
 {
-    public class Game
+    public interface IGameTemplate
+    {
+        public void StartGameLoop();
+        public bool EndGame();
+        public string toJSON();
+
+        static Game? LoadFromJSON(object data) => throw new NotImplementedException();
+    }
+    public class Game: IGameTemplate
     {
         private Disc?[][] grid;
         private int rows;
@@ -10,7 +18,6 @@ namespace Lineup
         private Player player1;
         private Player player2;
         private Player currentPlayer;
-        private bool isPlayerVsComputer;
         private IDiscFactory discFactory;
         private CommandInvoker commandInvoker;
 
@@ -20,7 +27,6 @@ namespace Lineup
         {
             this.rows = rows;
             this.cols = cols;
-            this.isPlayerVsComputer = isPlayerVsComputer;
             this.discFactory = new StandardLineUpDiscFactory();
             this.commandInvoker = new CommandInvoker();
             int totalOrdinaryDiscs = rows * cols / 2;
@@ -150,93 +156,139 @@ namespace Lineup
             return true;
         }
 
+        // Template Method Pattern - Main game loop template
         public void StartGameLoop()
         {
-            Random random = new Random();
-            int action;
-            int col;
-            Disc? disc;
-
+            InitializeGameLoop();
 
             while (!EndGame())
             {
-                DrawGrid();
-                Console.WriteLine($"Current Player: {currentPlayer.PlayerId})");
-                Console.WriteLine("Choose action:");
-                Console.WriteLine($"1. Place Ordinary Disc (remain: {currentPlayer.OrdinaryDisc.Number})");
-                Console.WriteLine($"2. Place Boring Disc (remain: {currentPlayer.BoringDisc.Number})");
-                Console.WriteLine($"3. Place Magnetic Disc (remain: {currentPlayer.MagneticDisc.Number})");
-                Console.WriteLine("4. Save Game");
-                Console.WriteLine("5. Help");
-                if (currentPlayer.IsComputer)
-                {
-                    action = random.Next(0, 3);
-                }
-                else
-                {
-                    Console.Write($"Enter your action >> ");
-                    action = Convert.ToInt32(Console.ReadLine());
-                }
+                ExecuteGameTurn();
+            }
 
+            DisplayGameResult();
+        }
 
-                if (action == 4)
-                {
-                    var saveCommand = new SaveGameCommand(this);
-                    commandInvoker.ExecuteCommand(saveCommand);
-                    continue;
-                }
-                else if (action == 5)
-                {
-                    var helpCommand = new ShowHelpCommand();
-                    commandInvoker.ExecuteCommand(helpCommand);
-                    continue;
-                }
-                else if (action >= 1 && action <= 3)
-                {
-                    if (currentPlayer.IsComputer)
-                    {
-                        col = random.Next(0, 7);
-                    }
-                    else
-                    {
-                        Console.Write("Please enter the column number that you wanna place >> ");
-                        col = Convert.ToInt32(Console.ReadLine());
-                    }
+        // Template method steps
+        private void InitializeGameLoop()
+        {
+            Console.WriteLine("Game started!");
+        }
 
-                    disc = currentPlayer.MakeMove(col, (DiscType)(action - 1));
-                    if (disc != null)
-                    {
-                        var placeDiscCommand = new PlaceDiscCommand(this, disc, col, currentPlayer);
-                        
-                        if (commandInvoker.ExecuteCommand(placeDiscCommand))
-                        {
-                            if (EndGame())
-                            {
-                                break;
-                            }
-                            // switch player
-                            currentPlayer = currentPlayer == player1 ? player2 : player1;
-                        }
-                        else
-                        {
-                            Console.WriteLine("Invalid move! Try again.");
-                        }
-                    }
-                }
-                else
+        private void ExecuteGameTurn()
+        {
+            DisplayGameState();
+
+            int action;
+            if (currentPlayer.IsComputer)
+            {
+                Random random = new Random();
+                action = random.Next(1, 4); // Computer only places discs (actions 1-3)
+                Console.WriteLine($"Computer Player {currentPlayer.PlayerId} chose action: {action}");
+            }
+            else
+            {
+                Console.Write("Enter your action >> ");
+                if (!int.TryParse(Console.ReadLine(), out action))
                 {
-                    Console.WriteLine("Invalid input!");
+                    Console.WriteLine("Invalid input, try again!!");
+                    return;
                 }
             }
 
+            // Perform action using commend methods
+            ICommand? command = CreateCommandFromAction(action);
+            if (command != null)
+            {
+                bool success = commandInvoker.ExecuteCommand(command);
+                // switch player if finished disc placement
+                if (success && IsDiscPlacementAction(action))
+                {
+                    SwitchCurrentPlayer();
+                }
+                else if (!success && IsDiscPlacementAction(action))
+                {
+                    Console.WriteLine("Invalid input, try again!!");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid input, try again!!");
+            }
+        }
+
+        private void DisplayGameState()
+        {
+            DrawGrid();
+            Console.WriteLine($"Current Player: {currentPlayer.PlayerId}");
+            Console.WriteLine("Choose action:");
+            Console.WriteLine($"1. Place Ordinary Disc (remain: {currentPlayer.OrdinaryDisc.Number})");
+            Console.WriteLine($"2. Place Boring Disc (remain: {currentPlayer.BoringDisc.Number})");
+            Console.WriteLine($"3. Place Magnetic Disc (remain: {currentPlayer.MagneticDisc.Number})");
+            Console.WriteLine("4. Save Game");
+            Console.WriteLine("5. Help");
+        }
+
+        private ICommand? CreateCommandFromAction(int action)
+        {
+            return action switch
+            {
+                4 => new SaveGameCommand(this),
+                5 => new ShowHelpCommand(),
+                >= 1 and <= 3 => CreatePlaceDiscCommand(action),
+                _ => null
+            };
+        }
+
+        private PlaceDiscCommand? CreatePlaceDiscCommand(int action)
+        {
+            int col;
+            if (currentPlayer.IsComputer)
+            {
+                Random random = new Random();
+                col = random.Next(0, cols);
+                Console.WriteLine($"Computer Player {currentPlayer.PlayerId} chose column: {col}");
+            }
+            else
+            {
+                Console.Write("Please enter the column number that you want to place >> ");
+                if (!int.TryParse(Console.ReadLine(), out col))
+                {
+                    return null;
+                }
+            }
+
+            Disc ? disc = currentPlayer.MakeMove(col, (DiscType)(action - 1));
+
+            if (disc != null)
+            {
+                return new PlaceDiscCommand(this, disc, col, currentPlayer);
+            }
+
+            Console.WriteLine("Unable to create disc. Player may be out of that disc type.");
+            return null;
+        }
+
+        private bool IsDiscPlacementAction(int action)
+        {
+            return action >= 1 && action <= 3;
+        }
+
+        private void SwitchCurrentPlayer()
+        {
+            currentPlayer = currentPlayer == player1 ? player2 : player1;
+        }
+
+        private void DisplayGameResult()
+        {
             DrawGrid();
             int? winnerId = CheckWinCondition();
+
             if (winnerId != null)
                 Console.WriteLine($"Game Over! Player {winnerId} wins!");
             else
                 Console.WriteLine("Game Over! It's a draw!");
         }
-
 
         public string toJSON()
         {

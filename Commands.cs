@@ -130,8 +130,6 @@ namespace Lineup
             Console.WriteLine("1. Ordinary(O): Falls to lowest available space.");
             Console.WriteLine("2. Boring(B): Removes all discs in column, then places itself.");
             Console.WriteLine("3. Magnetic(M): Special disc and pull up the nearest below disc.");
-            Console.WriteLine("Input format: [symbol+column]");
-            Console.WriteLine("Example: 'O1' places ordinary disc in column 1");
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
             return true;
