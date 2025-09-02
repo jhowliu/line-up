@@ -8,47 +8,19 @@ namespace Lineup
         public Disc MagneticDisc { get; protected set; }
         public int PlayerId { get; protected set; }
         public bool IsComputer { get; protected set; }
+        protected IDiscFactory discFactory;
 
-        public Player(int numOfOrdDiscs, int playerId = 1)
+        public Player(int numOfOrdDiscs, int playerId = 1, IDiscFactory? factory = null)
         {
-            OrdinaryDisc = new OrdinaryDisc(playerId, numOfOrdDiscs); ;
-            BoringDisc = new BoringDisc(playerId, 2);
-            MagneticDisc = new MagneticDisc(playerId, 2);
+            discFactory = factory ?? new StandardLineUpDiscFactory();
+            OrdinaryDisc = discFactory.CreateOrdinaryDisc(playerId, numOfOrdDiscs);
+            BoringDisc = discFactory.CreateBoringDisc(playerId, 2);
+            MagneticDisc = discFactory.CreateMagneticDisc(playerId, 2);
             PlayerId = playerId;
             IsComputer = false;
         }
 
-        public virtual Disc? MakeMove(int column, DiscType discType = DiscType.Ordinary)
-        {
-            switch (discType)
-            {
-                case DiscType.Ordinary:
-                    if (OrdinaryDisc.Number > 0)
-                    {
-                        OrdinaryDisc.Number--;
-                        return OrdinaryDisc;
-                    }
-                    break;
-                case DiscType.Boring:
-                    if (BoringDisc.Number > 0)
-                    {
-                        BoringDisc.Number--;
-                        return BoringDisc;
-                    }
-                    break;
-                case DiscType.Magnetic:
-                    if (MagneticDisc.Number > 0)
-                    {
-                        MagneticDisc.Number--;
-                        return MagneticDisc;
-                    }
-                    break;
-            }
-
-            return null;
-        }
-
-        public static Player DeserializePlayer(JsonElement playerElement)
+        public static Player DeserializePlayer(JsonElement playerElement, IDiscFactory? factory = null)
         {
             int playerId = playerElement.GetProperty("PlayerId").GetInt32();
             bool isComputer = playerElement.GetProperty("IsComputer").GetBoolean();
@@ -56,7 +28,7 @@ namespace Lineup
             var ordinaryElement = playerElement.GetProperty("OrdinaryDisc");
             int ordinaryNumber = ordinaryElement.GetProperty("Number").GetInt32();
 
-            Player player = isComputer ? new ComputerPlayer(ordinaryNumber) : new Player(ordinaryNumber, playerId);
+            Player player = isComputer ? new ComputerPlayer(ordinaryNumber, factory) : new Player(ordinaryNumber, playerId, factory);
 
             // Update disc numbers from saved state
             var boringElement = playerElement.GetProperty("BoringDisc");
@@ -69,7 +41,6 @@ namespace Lineup
         }
 
         public void ReturnDisc(DiscType discType)
-
         {
             switch (discType)
             {
@@ -84,18 +55,28 @@ namespace Lineup
                     break;
             }
         }
+        public void DeductDisc(DiscType discType)
+        {
+            switch (discType)
+            {
+                case DiscType.Ordinary:
+                    OrdinaryDisc.Number--;
+                    break;
+                case DiscType.Boring:
+                    BoringDisc.Number--;
+                    break;
+                case DiscType.Magnetic:
+                    MagneticDisc.Number--;
+                    break;
+            }
+        }
     }
 
     public class ComputerPlayer : Player
     {
-        public ComputerPlayer(int numOfOrdDiscs) : base(numOfOrdDiscs, 2)
+        public ComputerPlayer(int numOfOrdDiscs, IDiscFactory? factory = null) : base(numOfOrdDiscs, 2, factory)
         {
             IsComputer = true;
-        }
-
-        public override Disc? MakeMove(int column, DiscType discType)
-        {
-            return base.MakeMove(column, discType);
         }
     }
 }
