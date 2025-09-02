@@ -12,11 +12,23 @@ namespace Lineup
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, Welcome to Lineup. Please select options:");
-            Console.WriteLine("0: Load Game\n1: New Game\n2: Test Mode");
+            Console.WriteLine("1: Load Game\n2: New Game\n3: Test Mode");
             Console.Write(">> ");
             int option = Convert.ToInt32(Console.ReadLine());
 
             if (option == 1)
+            {
+                Game? game = FileManager.LoadGame("record.json");
+                if (game != null)
+                {
+                    game.StartGameLoop();
+                }
+                else
+                {
+                    Console.WriteLine("Cannot load the game record. please create a new game.");
+                }
+            }
+            else if (option == 2)
             {
                 Console.WriteLine("Select Game Mode:");
                 Console.WriteLine("1: Player vs Player");
@@ -46,19 +58,7 @@ namespace Lineup
                 Game game = new Game(rows, cols, (GameMode)gameMode == GameMode.PlayerVsComputer);
                 game.StartGameLoop();
             }
-            else if (option == 0)
-            {
-                Game? game = FileManager.LoadGame("record.json");
-                if (game != null)
-                {
-                    game.StartGameLoop();
-                }
-                else
-                {
-                    Console.WriteLine("Cannot load the game record. please create a new game.");
-                }
-            }
-            else if (option == 2)
+            else if (option == 3)
             {
                 Console.WriteLine("=== TEST MODE ===");
                 Console.WriteLine("Enter grid size (default 6x7):");

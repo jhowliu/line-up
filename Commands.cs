@@ -40,7 +40,11 @@ namespace Lineup
             };
 
             game.SetPlaceDiscStrategy(discStrategy);
-            return game.ExecutePlaceDisc(disc, column);
+            bool success = game.ExecutePlaceDisc(disc, column);
+            if (success) {
+                game.GetCurrentPlayer().DeductDisc(disc.Type);
+            }
+            return success;
         }
 
         public bool CanExecute()

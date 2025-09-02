@@ -11,6 +11,8 @@ namespace Lineup
         {
             // Boundary check
             if (col < 0 || col >= game.GetCols()) return false;
+            // There is full in the given column 
+            if (game.GetGrid()[0][col] != null) return false;
 
             // Find the place at the given column from bottom row to top
             for (int row = game.GetRows() - 1; row >= 0; row--)
@@ -31,6 +33,8 @@ namespace Lineup
         {
             // Boundary check
             if (col < 0 || col >= game.GetCols()) return false;
+            // There is full in the given column 
+            if (game.GetGrid()[0][col] != null) return false;
 
             // Remove all discs in the given column
             for (int row = 0; row < game.GetRows(); row++)
@@ -58,6 +62,8 @@ namespace Lineup
         {
             // Boundary check
             if (col < 0 || col >= game.GetCols()) return false;
+            // There is full in the given column 
+            if (game.GetGrid()[0][col] != null) return false;
 
             int currDisc = -1;
             for (int row = game.GetRows() - 1; row >= 0; row--)

@@ -20,36 +20,6 @@ namespace Lineup
             IsComputer = false;
         }
 
-        public virtual Disc? MakeMove(int column, DiscType discType = DiscType.Ordinary)
-        {
-            switch (discType)
-            {
-                case DiscType.Ordinary:
-                    if (OrdinaryDisc.Number > 0)
-                    {
-                        OrdinaryDisc.Number--;
-                        return OrdinaryDisc;
-                    }
-                    break;
-                case DiscType.Boring:
-                    if (BoringDisc.Number > 0)
-                    {
-                        BoringDisc.Number--;
-                        return BoringDisc;
-                    }
-                    break;
-                case DiscType.Magnetic:
-                    if (MagneticDisc.Number > 0)
-                    {
-                        MagneticDisc.Number--;
-                        return MagneticDisc;
-                    }
-                    break;
-            }
-
-            return null;
-        }
-
         public static Player DeserializePlayer(JsonElement playerElement, IDiscFactory? factory = null)
         {
             int playerId = playerElement.GetProperty("PlayerId").GetInt32();
@@ -71,7 +41,6 @@ namespace Lineup
         }
 
         public void ReturnDisc(DiscType discType)
-
         {
             switch (discType)
             {
@@ -86,6 +55,21 @@ namespace Lineup
                     break;
             }
         }
+        public void DeductDisc(DiscType discType)
+        {
+            switch (discType)
+            {
+                case DiscType.Ordinary:
+                    OrdinaryDisc.Number--;
+                    break;
+                case DiscType.Boring:
+                    BoringDisc.Number--;
+                    break;
+                case DiscType.Magnetic:
+                    MagneticDisc.Number--;
+                    break;
+            }
+        }
     }
 
     public class ComputerPlayer : Player
@@ -93,11 +77,6 @@ namespace Lineup
         public ComputerPlayer(int numOfOrdDiscs, IDiscFactory? factory = null) : base(numOfOrdDiscs, 2, factory)
         {
             IsComputer = true;
-        }
-
-        public override Disc? MakeMove(int column, DiscType discType)
-        {
-            return base.MakeMove(column, discType);
         }
     }
 }

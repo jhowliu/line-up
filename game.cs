@@ -18,6 +18,7 @@ namespace Lineup
         private Player player1;
         private Player player2;
         private Player currentPlayer;
+        private int winningThreshold;
         private IDiscFactory discFactory;
         private CommandInvoker commandInvoker;
 
@@ -30,6 +31,7 @@ namespace Lineup
             this.discFactory = new StandardLineUpDiscFactory();
             this.commandInvoker = new CommandInvoker();
             int totalOrdinaryDiscs = rows * cols / 2;
+            winningThreshold = Convert.ToInt32(rows * cols * 0.1);
 
             // initiate 2d array
             grid = new Disc?[rows][];
@@ -62,7 +64,7 @@ namespace Lineup
             Console.Write(" ");
             for (int j = 0; j < cols; j++)
             {
-                Console.Write($" {j} ");
+                Console.Write($" {j + 1} ");
                 if (j < cols - 1) Console.Write(" ");
             }
             Console.WriteLine();
@@ -101,7 +103,7 @@ namespace Lineup
                     Disc? disc = grid[row][col];
                     if (disc != null)
                     {
-                        if (CheckFourInRow(row, col, disc.PlayerId))
+                        if (CheckNInRow(row, col, disc.PlayerId))
                             return disc.PlayerId;
                     }
                 }
@@ -110,7 +112,7 @@ namespace Lineup
             return null;
         }
 
-        private bool CheckFourInRow(int startRow, int startCol, int playerId)
+        private bool CheckNInRow(int startRow, int startCol, int playerId)
         {
             // Game will check if the given disc that player placed contibuted to end game.
             int[][] directions = {
@@ -126,7 +128,7 @@ namespace Lineup
                 int dRow = direction[0];
                 int dCol = direction[1];
 
-                for (int i = 1; i < 4; i++)
+                for (int i = 1; i < winningThreshold; i++)
                 {
                     int newRow = startRow + i * dRow;
                     int newCol = startCol + i * dCol;
@@ -139,7 +141,7 @@ namespace Lineup
                     else break;
                 }
 
-                if (count >= 4) return true;
+                if (count >= winningThreshold) return true;
             }
             return false;
         }
@@ -247,18 +249,33 @@ namespace Lineup
             {
                 Random random = new Random();
                 col = random.Next(0, cols);
-                Console.WriteLine($"Computer Player {currentPlayer.PlayerId} chose column: {col}");
+                Console.WriteLine($"Computer Player {currentPlayer.PlayerId} chose column: {col + 1}");
             }
             else
             {
                 Console.Write("Please enter the column number that you want to place >> ");
-                if (!int.TryParse(Console.ReadLine(), out col))
+                if (!int.TryParse(Console.ReadLine(), out int userInput))
                 {
+                    return null;
+                }
+                // Convert from 1-based user input to 0-based internal index
+                col = userInput - 1;
+                
+                // Validate column range
+                if (col < 0 || col >= cols)
+                {
+                    Console.WriteLine($"Invalid column! Please enter a number between 1 and {cols}.");
                     return null;
                 }
             }
 
-            Disc ? disc = currentPlayer.MakeMove(col, (DiscType)(action - 1));
+            Disc? disc = (DiscType)(action - 1) switch
+            {
+                DiscType.Ordinary => currentPlayer.OrdinaryDisc.Number > 0 ? currentPlayer.OrdinaryDisc : null,
+                DiscType.Boring => currentPlayer.BoringDisc.Number > 0 ? currentPlayer.BoringDisc : null,
+                DiscType.Magnetic => currentPlayer.MagneticDisc.Number > 0 ? currentPlayer.MagneticDisc : null,
+                _ => null,
+            };
 
             if (disc != null)
             {
@@ -347,7 +364,107 @@ namespace Lineup
                 return null;
             }
         }
-        public void RunTestMode(string input) { }
+        public void RunTestMode(string input) 
+        {
+            Console.WriteLine("=== STARTING TEST MODE ===");
+            Console.WriteLine($"Input sequence: {input}");
+            
+            // Parse the input string
+            string[] plays = input.Split(',');
+            
+            foreach (string play in plays)
+            {
+                string trimmedPlay = play.Trim();
+                if (string.IsNullOrEmpty(trimmedPlay)) continue;
+                
+                // Parse disc type and column
+                char discTypeChar = char.ToUpper(trimmedPlay[0]);
+                if (!int.TryParse(trimmedPlay.Substring(1), out int column))
+                {
+                    Console.WriteLine($"Invalid play format: {trimmedPlay}");
+                    continue;
+                }
+                
+                // Convert to 0-based index
+                int col = column - 1;
+                
+                // Validate column
+                if (col < 0 || col >= cols)
+                {
+                    Console.WriteLine($"Invalid column {column} in play: {trimmedPlay}");
+                    continue;
+                }
+                
+                // Determine disc type
+                DiscType discType;
+                switch (discTypeChar)
+                {
+                    case 'O':
+                        discType = DiscType.Ordinary;
+                        break;
+                    case 'B':
+                        discType = DiscType.Boring;
+                        break;
+                    case 'M':
+                        discType = DiscType.Magnetic;
+                        break;
+                    case 'E':
+                        Console.WriteLine($"Exploding disc not implemented yet, skipping play: {trimmedPlay}");
+                        continue;
+                    default:
+                        Console.WriteLine($"Unknown disc type '{discTypeChar}' in play: {trimmedPlay}");
+                        continue;
+                }
+                
+                // Execute the play
+                Console.WriteLine($"Player {currentPlayer.PlayerId} plays {discType} disc in column {column}");
+                
+                // Get the appropriate disc from the player
+                Disc? disc = discType switch
+                {
+                    DiscType.Ordinary => currentPlayer.OrdinaryDisc.Number > 0 ? currentPlayer.OrdinaryDisc : null,
+                    DiscType.Boring => currentPlayer.BoringDisc.Number > 0 ? currentPlayer.BoringDisc : null,
+                    DiscType.Magnetic => currentPlayer.MagneticDisc.Number > 0 ? currentPlayer.MagneticDisc : null,
+                    _ => null,
+                };
+                if (disc != null)
+                {
+                    PlaceDiscCommand command = new PlaceDiscCommand(this, disc, col, currentPlayer);
+                    bool success = commandInvoker.ExecuteCommand(command);
+                    
+                    if (success)
+                    {
+                        // Show the grid after each move
+                        DrawGrid();
+                        
+                        // Check if game ended
+                        if (EndGame())
+                        {
+                            DisplayGameResult();
+                            return;
+                        }
+                        
+                        // Switch player
+                        SwitchCurrentPlayer();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to place disc in column {column}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Player {currentPlayer.PlayerId} is out of {discType} discs");
+                }
+            }
+            
+            // Final game state
+            if (!EndGame())
+            {
+                Console.WriteLine("=== TEST SEQUENCE COMPLETED ===");
+                DrawGrid();
+            }
+        }
 
         public void SetPlaceDiscStrategy(IPlaceDiscStrategy strategy)
         {
