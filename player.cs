@@ -3,21 +3,33 @@ namespace Lineup
 {
     public class Player
     {
-        public Disc OrdinaryDisc { get; protected set; }
-        public Disc BoringDisc { get; protected set; }
-        public Disc MagneticDisc { get; protected set; }
+        public Disc? OrdinaryDisc { get; protected set; }
+        public Disc? BoringDisc { get; protected set; }
+        public Disc? MagneticDisc { get; protected set; }
         public int PlayerId { get; protected set; }
         public bool IsComputer { get; protected set; }
-        protected IDiscFactory discFactory;
 
-        public Player(int numOfOrdDiscs, int playerId = 1, IDiscFactory? factory = null)
+        public Player(int playerId = 1)
         {
-            discFactory = factory ?? new StandardLineUpDiscFactory();
-            OrdinaryDisc = discFactory.CreateOrdinaryDisc(playerId, numOfOrdDiscs);
-            BoringDisc = discFactory.CreateBoringDisc(playerId, 2);
-            MagneticDisc = discFactory.CreateMagneticDisc(playerId, 2);
             PlayerId = playerId;
             IsComputer = false;
+        }
+
+        public Player SetOrdinaryDisc(OrdinaryDisc disc)
+        {
+            OrdinaryDisc = disc;
+            return this;
+        }
+        public Player SetBoringDisc(BoringDisc disc)
+        {
+            BoringDisc = disc;
+            return this;
+        }
+
+        public Player SetMagneticDisc(MagneticDisc disc)
+        {
+            MagneticDisc = disc;
+            return this;
         }
 
         public static Player DeserializePlayer(JsonElement playerElement, IDiscFactory? factory = null)
@@ -25,17 +37,11 @@ namespace Lineup
             int playerId = playerElement.GetProperty("PlayerId").GetInt32();
             bool isComputer = playerElement.GetProperty("IsComputer").GetBoolean();
 
-            var ordinaryElement = playerElement.GetProperty("OrdinaryDisc");
-            int ordinaryNumber = ordinaryElement.GetProperty("Number").GetInt32();
+            Player player = isComputer ? new ComputerPlayer() : new Player(playerId);
 
-            Player player = isComputer ? new ComputerPlayer(ordinaryNumber, factory) : new Player(ordinaryNumber, playerId, factory);
-
-            // Update disc numbers from saved state
-            var boringElement = playerElement.GetProperty("BoringDisc");
-            player.BoringDisc.Number = boringElement.GetProperty("Number").GetInt32();
-
-            var magneticElement = playerElement.GetProperty("MagneticDisc");
-            player.MagneticDisc.Number = magneticElement.GetProperty("Number").GetInt32();
+            player.OrdinaryDisc = Disc.LoadFromJSON(playerElement.GetProperty("OrdinaryDisc"));
+            player.BoringDisc = Disc.LoadFromJSON(playerElement.GetProperty("BoringDisc"));
+            player.MagneticDisc = Disc.LoadFromJSON(playerElement.GetProperty("MagneticDisc"));
 
             return player;
         }
@@ -45,13 +51,13 @@ namespace Lineup
             switch (discType)
             {
                 case DiscType.Ordinary:
-                    OrdinaryDisc.Number++;
+                    if (OrdinaryDisc != null) OrdinaryDisc.Number++;
                     break;
                 case DiscType.Boring:
-                    BoringDisc.Number++;
+                    if (BoringDisc != null) BoringDisc.Number++;
                     break;
                 case DiscType.Magnetic:
-                    MagneticDisc.Number++;
+                    if (MagneticDisc != null) MagneticDisc.Number++;
                     break;
             }
         }
@@ -60,13 +66,13 @@ namespace Lineup
             switch (discType)
             {
                 case DiscType.Ordinary:
-                    OrdinaryDisc.Number--;
+                    if (OrdinaryDisc != null) OrdinaryDisc.Number--;
                     break;
                 case DiscType.Boring:
-                    BoringDisc.Number--;
+                    if (BoringDisc != null) BoringDisc.Number--;
                     break;
                 case DiscType.Magnetic:
-                    MagneticDisc.Number--;
+                    if (MagneticDisc != null) MagneticDisc.Number--;
                     break;
             }
         }
@@ -74,7 +80,7 @@ namespace Lineup
 
     public class ComputerPlayer : Player
     {
-        public ComputerPlayer(int numOfOrdDiscs, IDiscFactory? factory = null) : base(numOfOrdDiscs, 2, factory)
+        public ComputerPlayer() : base(2)
         {
             IsComputer = true;
         }

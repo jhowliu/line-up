@@ -6,7 +6,7 @@ namespace Lineup
     {
         public void StartGameLoop();
         public bool EndGame();
-        public string toJSON();
+        public string ToJSON();
 
         static Game? LoadFromJSON(object data) => throw new NotImplementedException();
     }
@@ -19,7 +19,7 @@ namespace Lineup
         private Player player2;
         private Player currentPlayer;
         private int winningThreshold;
-        private IDiscFactory discFactory;
+        private StandardLineUpDiscFactory discFactory;
         private CommandInvoker commandInvoker;
 
         private IPlaceDiscStrategy strategy = new OrdinaryDiscStrategy();
@@ -28,8 +28,8 @@ namespace Lineup
         {
             this.rows = rows;
             this.cols = cols;
-            this.discFactory = new StandardLineUpDiscFactory();
-            this.commandInvoker = new CommandInvoker();
+            discFactory = new();
+            commandInvoker = new();
             int totalOrdinaryDiscs = rows * cols / 2;
             winningThreshold = Convert.ToInt32(rows * cols * 0.1);
 
@@ -40,11 +40,21 @@ namespace Lineup
                 grid[r] = new Disc?[cols];
             }
 
-            player1 = new Player(totalOrdinaryDiscs, 1, discFactory);
-            player2 = new Player(totalOrdinaryDiscs, 2, discFactory);
+            player1 = new Player(1).
+                SetOrdinaryDisc(discFactory.CreateOrdinaryDisc(1, totalOrdinaryDiscs)).
+                SetMagneticDisc(discFactory.CreateMagneticDisc(1, 2)).
+                SetBoringDisc(discFactory.CreateBoringDisc(1, 2));
+            player2 = new Player(2).
+                SetOrdinaryDisc(discFactory.CreateOrdinaryDisc(2, totalOrdinaryDiscs)).
+                SetMagneticDisc(discFactory.CreateMagneticDisc(2, 2)).
+                SetBoringDisc(discFactory.CreateBoringDisc(2, 2));
+
             if (isPlayerVsComputer)
             {
-                player2 = new ComputerPlayer(totalOrdinaryDiscs, discFactory);
+                player2 = new ComputerPlayer().
+                    SetOrdinaryDisc(discFactory.CreateOrdinaryDisc(2, totalOrdinaryDiscs)).
+                    SetMagneticDisc(discFactory.CreateMagneticDisc(2, 2)).
+                    SetBoringDisc(discFactory.CreateBoringDisc(2, 2));
             }
             currentPlayer = player1;
         }
@@ -224,9 +234,9 @@ namespace Lineup
             DrawGrid();
             Console.WriteLine($"Current Player: {currentPlayer.PlayerId}");
             Console.WriteLine("Choose action:");
-            Console.WriteLine($"1. Place Ordinary Disc (remain: {currentPlayer.OrdinaryDisc.Number})");
-            Console.WriteLine($"2. Place Boring Disc (remain: {currentPlayer.BoringDisc.Number})");
-            Console.WriteLine($"3. Place Magnetic Disc (remain: {currentPlayer.MagneticDisc.Number})");
+            Console.WriteLine($"1. Place Ordinary Disc (remain: {currentPlayer.OrdinaryDisc?.Number})");
+            Console.WriteLine($"2. Place Boring Disc (remain: {currentPlayer.BoringDisc?.Number})");
+            Console.WriteLine($"3. Place Magnetic Disc (remain: {currentPlayer.MagneticDisc?.Number})");
             Console.WriteLine("4. Save Game");
             Console.WriteLine("5. Help");
         }
@@ -271,9 +281,9 @@ namespace Lineup
 
             Disc? disc = (DiscType)(action - 1) switch
             {
-                DiscType.Ordinary => currentPlayer.OrdinaryDisc.Number > 0 ? currentPlayer.OrdinaryDisc : null,
-                DiscType.Boring => currentPlayer.BoringDisc.Number > 0 ? currentPlayer.BoringDisc : null,
-                DiscType.Magnetic => currentPlayer.MagneticDisc.Number > 0 ? currentPlayer.MagneticDisc : null,
+                DiscType.Ordinary => currentPlayer.OrdinaryDisc?.Number > 0 ? currentPlayer.OrdinaryDisc : null,
+                DiscType.Boring => currentPlayer.BoringDisc?.Number > 0 ? currentPlayer.BoringDisc : null,
+                DiscType.Magnetic => currentPlayer.MagneticDisc?.Number > 0 ? currentPlayer.MagneticDisc : null,
                 _ => null,
             };
 
@@ -307,7 +317,7 @@ namespace Lineup
                 Console.WriteLine("Game Over! It's a draw!");
         }
 
-        public string toJSON()
+        public string ToJSON()
         {
             return JsonSerializer.Serialize(new
             {
@@ -346,10 +356,10 @@ namespace Lineup
 
                 // Deserialize players
                 var player1Element = jsonData.GetProperty("player1");
-                game.player1 = Player.DeserializePlayer(player1Element, game.discFactory);
+                game.player1 = Player.DeserializePlayer(player1Element);
 
                 var player2Element = jsonData.GetProperty("player2");
-                game.player2 = Player.DeserializePlayer(player2Element, game.discFactory);
+                game.player2 = Player.DeserializePlayer(player2Element);
 
                 // Set current player
                 var currentPlayer = jsonData.GetProperty("currentPlayer");
@@ -422,9 +432,9 @@ namespace Lineup
                 // Get the appropriate disc from the player
                 Disc? disc = discType switch
                 {
-                    DiscType.Ordinary => currentPlayer.OrdinaryDisc.Number > 0 ? currentPlayer.OrdinaryDisc : null,
-                    DiscType.Boring => currentPlayer.BoringDisc.Number > 0 ? currentPlayer.BoringDisc : null,
-                    DiscType.Magnetic => currentPlayer.MagneticDisc.Number > 0 ? currentPlayer.MagneticDisc : null,
+                    DiscType.Ordinary => currentPlayer.OrdinaryDisc?.Number > 0 ? currentPlayer.OrdinaryDisc : null,
+                    DiscType.Boring => currentPlayer.BoringDisc?.Number > 0 ? currentPlayer.BoringDisc : null,
+                    DiscType.Magnetic => currentPlayer.MagneticDisc?.Number > 0 ? currentPlayer.MagneticDisc : null,
                     _ => null,
                 };
                 if (disc != null)

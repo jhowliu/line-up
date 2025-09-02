@@ -7,8 +7,8 @@ namespace Lineup
     {
         public static bool SaveGame(Game game, string path)
         {
-            File.WriteAllText(path, game.toJSON());
-            Console.WriteLine(game.toJSON());
+            File.WriteAllText(path, game.ToJSON());
+            Console.WriteLine(game.ToJSON());
             return false;
         }
 
