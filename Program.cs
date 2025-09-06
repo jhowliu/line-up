@@ -57,39 +57,8 @@
             }
             else if (option == 3)
             {
-                Console.WriteLine("=== TEST MODE ===");
-                Console.WriteLine("Enter grid size (default 6x7):");
-                Console.Write("Rows (press enter for default): ");
-                string? rowInput = Console.ReadLine();
-                int rows;
-                if (string.IsNullOrEmpty(rowInput))
-                {
-                    rows = 6;
-                }
-                else
-                {
-                    while (!int.TryParse(rowInput, out rows) || rows < 1)
-                    {
-                        Console.Write("Please input valid row number >> ");
-                        rowInput = Console.ReadLine();
-                    }
-                }
-
-                Console.Write("Columns (press enter for default): ");
-                string? colInput = Console.ReadLine();
-                int cols;
-                if (string.IsNullOrEmpty(colInput))
-                {
-                    cols = Constant.DefaultColumnSize;
-                }
-                else
-                {
-                    while (!int.TryParse(colInput, out cols) || cols < 1)
-                    {
-                        Console.Write("Please input valid column number >> ");
-                        colInput = Console.ReadLine();
-                    }
-                }
+                Console.WriteLine("======= TEST MODE ========");
+                (int rows, int cols) = PromptForColsRows();
 
                 Game game = new Game(rows, cols);
 
