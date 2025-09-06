@@ -9,6 +9,30 @@ namespace Lineup
         string Description { get; }
     }
 
+    public class ExitGameCommand : ICommand
+    {
+        public string Description { get; private set; }
+
+        public ExitGameCommand() {
+            Description = "Exit Game.";
+        }
+
+        public bool Execute()
+        {
+            if (!CanExecute()) return false;
+            Environment.Exit(0);
+            return true;
+        }
+
+        public void Redo() { }
+
+        public void Undo() { }
+
+        public bool CanExecute() {
+            return true;
+        }
+    }
+
     public class PlaceDiscCommand : ICommand
     {
         private readonly Game game;
@@ -41,7 +65,8 @@ namespace Lineup
 
             game.SetPlaceDiscStrategy(discStrategy);
             bool success = game.ExecutePlaceDisc(disc, column);
-            if (success) {
+            if (success)
+            {
                 game.GetCurrentPlayer().DeductDisc(disc.Type);
             }
             return success;
@@ -119,17 +144,19 @@ namespace Lineup
     {
         public string Description { get; private set; }
 
-        public ShowHelpCommand()
+        private int winningThreshold;
+
+        public ShowHelpCommand(int winningThreshold)
         {
+            this.winningThreshold = winningThreshold;
             Description = "Show help information";
         }
 
         public bool Execute()
         {
             if (!CanExecute()) return false;
-
-            Console.WriteLine("=== HELP ===");
-            Console.WriteLine("Goal: Get consecutive 4 discs in a row (horizontal, vertical, or diagonal)");
+            Console.WriteLine("============= HELP =============");
+            Console.WriteLine($"Goal: Get consecutive {winningThreshold} discs in a row (horizontal, vertical, or diagonal)");
             Console.WriteLine("Disc Types:");
             Console.WriteLine("1. Ordinary(O): Falls to lowest available space.");
             Console.WriteLine("2. Boring(B): Removes all discs in column, then places itself.");

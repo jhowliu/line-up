@@ -74,7 +74,14 @@ namespace Lineup
             Console.Write(" ");
             for (int j = 0; j < cols; j++)
             {
-                Console.Write($" {j + 1} ");
+                if (j < 10)
+                {
+                    Console.Write($" {j + 1} ");
+                }
+                else
+                {
+                     Console.Write($"{j + 1} ");
+                }
                 if (j < cols - 1) Console.Write(" ");
             }
             Console.WriteLine();
@@ -239,15 +246,17 @@ namespace Lineup
             Console.WriteLine($"3. Place Magnetic Disc (remain: {currentPlayer.MagneticDisc?.Number})");
             Console.WriteLine("4. Save Game");
             Console.WriteLine("5. Help");
+            Console.WriteLine("6. Exit Game");
         }
 
         private ICommand? CreateCommandFromAction(int action)
         {
             return action switch
             {
-                4 => new SaveGameCommand(this),
-                5 => new ShowHelpCommand(),
                 >= 1 and <= 3 => CreatePlaceDiscCommand(action),
+                4 => new SaveGameCommand(this),
+                5 => new ShowHelpCommand(this.winningThreshold),
+                6 => new ExitGameCommand(),
                 _ => null
             };
         }
@@ -279,14 +288,7 @@ namespace Lineup
                 }
             }
 
-            Disc? disc = (DiscType)(action - 1) switch
-            {
-                DiscType.Ordinary => currentPlayer.OrdinaryDisc?.Number > 0 ? currentPlayer.OrdinaryDisc : null,
-                DiscType.Boring => currentPlayer.BoringDisc?.Number > 0 ? currentPlayer.BoringDisc : null,
-                DiscType.Magnetic => currentPlayer.MagneticDisc?.Number > 0 ? currentPlayer.MagneticDisc : null,
-                _ => null,
-            };
-
+            Disc? disc = currentPlayer.MakeMove(action);
             if (disc != null)
             {
                 return new PlaceDiscCommand(this, disc, col, currentPlayer);
@@ -384,6 +386,8 @@ namespace Lineup
             
             foreach (string play in plays)
             {
+                Console.WriteLine($"player 1 ord num: {player1.OrdinaryDisc?.Number}");
+                Console.WriteLine($"player 2 ord disc num: {player2.OrdinaryDisc?.Number}");
                 string trimmedPlay = play.Trim();
                 if (string.IsNullOrEmpty(trimmedPlay)) continue;
                 
@@ -428,15 +432,9 @@ namespace Lineup
                 
                 // Execute the play
                 Console.WriteLine($"Player {currentPlayer.PlayerId} plays {discType} disc in column {column}");
-                
+
                 // Get the appropriate disc from the player
-                Disc? disc = discType switch
-                {
-                    DiscType.Ordinary => currentPlayer.OrdinaryDisc?.Number > 0 ? currentPlayer.OrdinaryDisc : null,
-                    DiscType.Boring => currentPlayer.BoringDisc?.Number > 0 ? currentPlayer.BoringDisc : null,
-                    DiscType.Magnetic => currentPlayer.MagneticDisc?.Number > 0 ? currentPlayer.MagneticDisc : null,
-                    _ => null,
-                };
+                Disc? disc = currentPlayer.MakeMove(discType);
                 if (disc != null)
                 {
                     PlaceDiscCommand command = new PlaceDiscCommand(this, disc, col, currentPlayer);

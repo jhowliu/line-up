@@ -103,9 +103,6 @@ namespace Lineup
                     }
                 }
             }
-
-            Console.WriteLine($"first player pos: {nearestPlayerDisc}, last opponent disc: {lastOpponentDisc}");
-
             // Swap the position
             if (nearestPlayerDisc != -1 && lastOpponentDisc != -1 && nearestPlayerDisc > lastOpponentDisc)
             {

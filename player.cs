@@ -1,19 +1,15 @@
+using System.Data;
 using System.Text.Json;
 namespace Lineup
 {
-    public class Player
+    public class Player(int playeId = 1)
     {
         public Disc? OrdinaryDisc { get; protected set; }
         public Disc? BoringDisc { get; protected set; }
         public Disc? MagneticDisc { get; protected set; }
-        public int PlayerId { get; protected set; }
-        public bool IsComputer { get; protected set; }
+        public int PlayerId { get; protected set; } = playeId;
+        public bool IsComputer { get; protected set; } = false;
 
-        public Player(int playerId = 1)
-        {
-            PlayerId = playerId;
-            IsComputer = false;
-        }
 
         public Player SetOrdinaryDisc(OrdinaryDisc disc)
         {
@@ -60,6 +56,28 @@ namespace Lineup
                     if (MagneticDisc != null) MagneticDisc.Number++;
                     break;
             }
+        }
+
+        public virtual Disc? MakeMove(int action)
+        {
+            return (DiscType)(action-1) switch
+            {
+                DiscType.Ordinary => OrdinaryDisc?.Number > 0 ? OrdinaryDisc : null,
+                DiscType.Boring => BoringDisc?.Number > 0 ? BoringDisc : null,
+                DiscType.Magnetic => MagneticDisc?.Number > 0 ? MagneticDisc : null,
+                _ => null,
+            };
+        }
+
+        public virtual Disc? MakeMove(DiscType discType)
+        {
+            return discType switch
+            {
+                DiscType.Ordinary => OrdinaryDisc?.Number > 0 ? OrdinaryDisc : null,
+                DiscType.Boring => BoringDisc?.Number > 0 ? BoringDisc : null,
+                DiscType.Magnetic => MagneticDisc?.Number > 0 ? MagneticDisc : null,
+                _ => null,
+            };
         }
         public void DeductDisc(DiscType discType)
         {
